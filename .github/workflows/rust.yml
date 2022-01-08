@@ -4,20 +4,64 @@ name: Rust
 # yamllint disable-line rule:truthy
 on: push
 
+env:
+  CARGO_TERM_COLORS: always
+  SKIP_DOCKER: "true"
+  SQLX_FEATURES: postgres,native-tls
+  SQLX_VERSION: 0.5.10
+
 jobs:
   clippy:
+    name: Clippy
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: "docker.io/library/postgres:14.1"
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_USER: postgres
+        ports:
+          - "5432:5432"
     steps:
       - uses: actions/checkout@v1
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+
+      - name: Cache sqlx-cli
+        uses: actions/cache@v2
+        id : cache-sqlx
+        with:
+          path: |
+            ~/.cargo/bin/sqlx
+          key: ${{ runner.os }}-sqlx-${{ env.SQLX_VERSION }}
+
+      - name: Install sqlx-cli
+        uses: actions-rs/cargo@v1
+        if: steps.cache-sqlx.outputs.cache-hit == false
+        with:
+          command: install
+          args: >-
+            sqlx-cli
+            --force
+            --version=${{ env.SQLX_VERSION }}
+            --no-default-features
+            --features=${{ env.SQLX_FEATURES }}
+
+      - name: Set up DB
+        run: |
+          sudo apt-get install libpq-dev -y
+          SKI_DOCKER=true ./scripts/init_db.sh
+
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
 
-  fmt:
+  rustfmt:
+    name: Rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -30,30 +74,116 @@ jobs:
           args: '--all -- --check'
 
   test:
+    name: Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: "docker.io/library/postgres:14.1"
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_USER: postgres
+        ports:
+          - "5432:5432"
     steps:
       - uses: actions/checkout@v1
+
+      - name: Cache dependencies
+        id: cache-dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+
+      - name: Cache sqlx-cli
+        uses: actions/cache@v2
+        id : cache-sqlx
+        with:
+          path: |
+            ~/.cargo/bin/sqlx
+          key: ${{ runner.os }}-sqlx-${{ env.SQLX_VERSION }}
+
+      - name: Install sqlx-cli
+        uses: actions-rs/cargo@v1
+        if: steps.cache-sqlx.outputs.cache-hit == false
+        with:
+          command: install
+          args: >-
+            sqlx-cli
+            --force
+            --version=${{ env.SQLX_VERSION }}
+            --no-default-features
+            --features=${{ env.SQLX_FEATURES }}
+
+      - name: Set up DB
+        run: |
+          sudo apt-get install libpq-dev -y
+          SKI_DOCKER=true ./scripts/init_db.sh
+
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: '--locked'
 
   coverage:
+    name: Coverage
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: "docker.io/library/postgres:14.1"
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_USER: postgres
+        ports:
+          - "5432:5432"
     steps:
       - uses: actions/checkout@v1
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+
+      - name: Cache sqlx-cli
+        uses: actions/cache@v2
+        id : cache-sqlx
+        with:
+          path: |
+            ~/.cargo/bin/sqlx
+          key: ${{ runner.os }}-sqlx-${{ env.SQLX_VERSION }}
+
+      - name: Install sqlx-cli
+        uses: actions-rs/cargo@v1
+        if: steps.cache-sqlx.outputs.cache-hit == false
+        with:
+          command: install
+          args: >-
+            sqlx-cli
+            --force
+            --version=${{ env.SQLX_VERSION }}
+            --no-default-features
+            --features=${{ env.SQLX_FEATURES }}
+
+      - name: Set up DB
+        run: |
+          sudo apt-get install libpq-dev -y
+          SKI_DOCKER=true ./scripts/init_db.sh
+
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '--ignore-tests'
+          args: '--ignore-tests --avoid-cfg-tarpaulin'
+
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v1
+
       - name: Archive code coverage results
         uses: actions/upload-artifact@v2
         with:
