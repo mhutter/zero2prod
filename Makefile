@@ -16,11 +16,13 @@ clippy: ## Run cargo clippy
 
 .PHONY: fmt
 fmt: ## Run rustfmt in check mode
-	cargo fmt --all --check
+	cargo fmt --all -- --check
 
 .PHONY: format
 format: ## Format all rust sources
 	cargo fmt --all
 
 .PHONY: ci
-ci: clippy fmt test tarpaulin ## Run all checks as they would run in CI
+ci: clippy fmt test ## Run all checks as they would run in CI
+	@echo "NOTE: tarpaulin was not run since it will cause all targets to recompile."
+	@echo "To run it manually, call 'make tarpaulin'."
