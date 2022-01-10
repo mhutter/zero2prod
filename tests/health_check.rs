@@ -1,8 +1,27 @@
 use std::net::TcpListener;
 
+use once_cell::sync::Lazy;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
-use zero2prod::configuration::{get_configuration, DatabaseSettings};
+use zero2prod::{
+    configuration::{get_configuration, DatabaseSettings},
+    telemetry::{get_subscriber, init_subscriber},
+};
+
+static TRACING: Lazy<()> = Lazy::new(|| {
+    let name = "test".to_string();
+    let level = "debug".to_string();
+
+    // we cannot assign `subscriber` to the same variabe because the sink is part of the type
+    // returned by `get_subscriber`.
+    if std::env::var("TEST_LOG").is_ok() {
+        let subscriber = get_subscriber(name, level, std::io::stdout);
+        init_subscriber(subscriber);
+    } else {
+        let subscriber = get_subscriber(name, level, std::io::sink);
+        init_subscriber(subscriber);
+    }
+});
 
 #[tokio::test]
 async fn health_check_works() {
@@ -25,6 +44,9 @@ pub struct TestApp {
 }
 
 async fn spawn_app() -> TestApp {
+    // Will only be executed the first time
+    Lazy::force(&TRACING);
+
     // Bind to a random free port
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind random port");
     let port = listener.local_addr().unwrap().port();

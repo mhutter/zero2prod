@@ -5,6 +5,7 @@ use actix_web::{
 use chrono::Utc;
 use serde::Deserialize;
 use sqlx::{query, PgPool};
+use tracing::Instrument;
 use uuid::Uuid;
 
 #[derive(Deserialize)]
@@ -15,12 +16,15 @@ pub struct FormData {
 
 pub async fn subscribe(db: Data<PgPool>, form: Form<FormData>) -> HttpResponse {
     let request_id = Uuid::new_v4();
-    log::info!(
-        "Request<{}> Adding '{} <{}>' as a new subscriber",
-        request_id,
-        form.name,
-        form.email
+    let request_span = tracing::info_span!(
+        "Adding a new subscriber",
+        %request_id,
+        subscriber_name=%form.name,
+        subscriber_email=%form.email,
     );
+    let _request_span_guard = request_span.enter();
+
+    let query_span = tracing::info_span!("Saving subscriber details into DB");
     match query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
@@ -34,18 +38,13 @@ pub async fn subscribe(db: Data<PgPool>, form: Form<FormData>) -> HttpResponse {
     // `get_ref` returns an immutable reference to the `PgConnection` within
     // `web::Data`.
     .execute(db.get_ref())
+    // Attach instrumentation
+    .instrument(query_span)
     .await
     {
-        Ok(_) => {
-            log::info!("Request<{}> New subscriber has been saved", request_id);
-            HttpResponse::Ok().finish()
-        }
+        Ok(_) => HttpResponse::Ok().finish(),
         Err(e) => {
-            log::error!(
-                "Request<{}> Failed to create subscription: {:?}",
-                request_id,
-                e,
-            );
+            tracing::error!("Failed to create subscription: {:?}", e,);
             HttpResponse::InternalServerError().finish()
         }
     }

@@ -1,16 +1,18 @@
-use std::{io, net::TcpListener};
-
-use zero2prod::startup;
-
 #[tokio::main]
 #[cfg(not(tarpaulin_include))]
-async fn main() -> io::Result<()> {
-    use env_logger::Env;
-    use sqlx::PgPool;
-    use zero2prod::configuration::get_configuration;
+async fn main() -> std::io::Result<()> {
+    use std::net::TcpListener;
 
-    // Set up logging
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    use sqlx::PgPool;
+    use zero2prod::{
+        configuration::get_configuration,
+        startup,
+        telemetry::{get_subscriber, init_subscriber},
+    };
+
+    // Set up tracing/logging
+    let subscriber = get_subscriber("zero2prod".into(), "info".into(), std::io::stdout);
+    init_subscriber(subscriber);
 
     // Read configuration
     let cfg = get_configuration().expect("read configuration");
@@ -25,6 +27,6 @@ async fn main() -> io::Result<()> {
         .expect("Connect to PostgreSQL");
 
     // Start up
-    log::debug!("Listening on http://{}/", &addr);
+    tracing::debug!("Listening on http://{}/", &addr);
     startup::run(listener, postgres_pool)?.await
 }
