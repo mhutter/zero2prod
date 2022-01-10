@@ -14,6 +14,13 @@ pub struct FormData {
 }
 
 pub async fn subscribe(db: Data<PgPool>, form: Form<FormData>) -> HttpResponse {
+    let request_id = Uuid::new_v4();
+    log::info!(
+        "Request<{}> Adding '{} <{}>' as a new subscriber",
+        request_id,
+        form.name,
+        form.email
+    );
     match query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
@@ -29,9 +36,16 @@ pub async fn subscribe(db: Data<PgPool>, form: Form<FormData>) -> HttpResponse {
     .execute(db.get_ref())
     .await
     {
-        Ok(_) => HttpResponse::Ok().finish(),
+        Ok(_) => {
+            log::info!("Request<{}> New subscriber has been saved", request_id);
+            HttpResponse::Ok().finish()
+        }
         Err(e) => {
-            eprintln!("Failed to create subscription: {}", e);
+            log::error!(
+                "Request<{}> Failed to create subscription: {:?}",
+                request_id,
+                e,
+            );
             HttpResponse::InternalServerError().finish()
         }
     }
