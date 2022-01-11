@@ -17,9 +17,8 @@ pub struct FormData {
     name = "Adding a new subscriber",
     skip(db, form),
     fields(
-        request_id = %Uuid::new_v4(),
-        subscriber_name = %form.name,
-        subscriber_email = %form.email,
+        subscriber.name = %form.name,
+        subscriber.email = %form.email,
     )
 )]
 #[allow(clippy::async_yields_async)]
