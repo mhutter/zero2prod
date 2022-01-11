@@ -5,7 +5,6 @@ use actix_web::{
 use chrono::Utc;
 use serde::Deserialize;
 use sqlx::{query, PgPool};
-use tracing::Instrument;
 use uuid::Uuid;
 
 #[derive(Deserialize)]
@@ -14,18 +13,26 @@ pub struct FormData {
     name: String,
 }
 
+#[tracing::instrument(
+    name = "Adding a new subscriber",
+    skip(db, form),
+    fields(
+        request_id = %Uuid::new_v4(),
+        subscriber_name = %form.name,
+        subscriber_email = %form.email,
+    )
+)]
+#[allow(clippy::async_yields_async)]
 pub async fn subscribe(db: Data<PgPool>, form: Form<FormData>) -> HttpResponse {
-    let request_id = Uuid::new_v4();
-    let request_span = tracing::info_span!(
-        "Adding a new subscriber",
-        %request_id,
-        subscriber_name=%form.name,
-        subscriber_email=%form.email,
-    );
-    let _request_span_guard = request_span.enter();
+    match insert_subscriber(&db, &form).await {
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(_) => HttpResponse::InternalServerError().finish(),
+    }
+}
 
-    let query_span = tracing::info_span!("Saving subscriber details into DB");
-    match query!(
+#[tracing::instrument(name = "Saving subscriber details into DB", skip(db, form))]
+pub async fn insert_subscriber(db: &PgPool, form: &FormData) -> Result<(), sqlx::Error> {
+    query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
         VALUES ($1, $2, $3, $4)
@@ -35,17 +42,12 @@ pub async fn subscribe(db: Data<PgPool>, form: Form<FormData>) -> HttpResponse {
         form.name,
         Utc::now(),
     )
-    // `get_ref` returns an immutable reference to the `PgConnection` within
-    // `web::Data`.
-    .execute(db.get_ref())
-    // Attach instrumentation
-    .instrument(query_span)
+    .execute(db)
     .await
-    {
-        Ok(_) => HttpResponse::Ok().finish(),
-        Err(e) => {
-            tracing::error!("Failed to create subscription: {:?}", e,);
-            HttpResponse::InternalServerError().finish()
-        }
-    }
+    .map_err(|e| {
+        tracing::error!("Failed to create subscriptions: {:?}", e);
+        e
+    })?;
+
+    Ok(())
 }

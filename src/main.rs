@@ -3,6 +3,7 @@
 async fn main() -> std::io::Result<()> {
     use std::net::TcpListener;
 
+    use secrecy::ExposeSecret;
     use sqlx::PgPool;
     use zero2prod::{
         configuration::get_configuration,
@@ -22,7 +23,7 @@ async fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind(&addr)?;
 
     // Connect to DB
-    let postgres_pool = PgPool::connect(&cfg.database.connection_string())
+    let postgres_pool = PgPool::connect(cfg.database.connection_string().expose_secret())
         .await
         .expect("Connect to PostgreSQL");
 
