@@ -14,46 +14,14 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: "docker.io/library/postgres:14.1"
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_USER: postgres
-        ports:
-          - "5432:5432"
+    env:
+      SQLX_OFFLINE: "true"
     steps:
       - uses: actions/checkout@v1
 
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-
-      - name: Cache sqlx-cli
-        uses: actions/cache@v2
-        id : cache-sqlx
-        with:
-          path: |
-            ~/.cargo/bin/sqlx
-          key: ${{ runner.os }}-sqlx-${{ env.SQLX_VERSION }}
-
-      - name: Install sqlx-cli
-        uses: actions-rs/cargo@v1
-        if: steps.cache-sqlx.outputs.cache-hit == false
-        with:
-          command: install
-          args: >-
-            sqlx-cli
-            --force
-            --version=${{ env.SQLX_VERSION }}
-            --no-default-features
-            --features=${{ env.SQLX_FEATURES }}
-
-      - name: Set up DB
-        run: |
-          sudo apt-get install libpq-dev -y
-          SKI_DOCKER=true ./scripts/init_db.sh
 
       - uses: actions-rs/clippy-check@v1
         with:
@@ -104,9 +72,10 @@ jobs:
 
       - name: Cache sqlx-cli
         uses: actions/cache@v2
-        id : cache-sqlx
+        id: cache-sqlx
         with:
           path: |
+            ~/.cargo/bin/cargo-sqlx
             ~/.cargo/bin/sqlx
           key: ${{ runner.os }}-sqlx-${{ env.SQLX_VERSION }}
 
@@ -126,6 +95,9 @@ jobs:
         run: |
           sudo apt-get install libpq-dev -y
           SKI_DOCKER=true ./scripts/init_db.sh
+
+      - name: Check sqlx-data.json is up-to-date
+        run: cargo sqlx prepare --check -- --bin zero2prod
 
       - uses: actions-rs/cargo@v1
         with:
@@ -153,9 +125,10 @@ jobs:
 
       - name: Cache sqlx-cli
         uses: actions/cache@v2
-        id : cache-sqlx
+        id: cache-sqlx
         with:
           path: |
+            ~/.cargo/bin/cargo-sqlx
             ~/.cargo/bin/sqlx
           key: ${{ runner.os }}-sqlx-${{ env.SQLX_VERSION }}
 

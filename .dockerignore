@@ -1,0 +1,7 @@
+*.md
+.git/
+.github/
+Dockerfile
+Makefile
+scripts/
+target/
