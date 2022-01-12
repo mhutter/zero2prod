@@ -1,7 +1,10 @@
 *.md
+.env
 .git/
 .github/
 Dockerfile
 Makefile
+migrations/
 scripts/
 target/
+tests/
