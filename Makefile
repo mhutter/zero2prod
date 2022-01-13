@@ -22,7 +22,15 @@ fmt: ## Run rustfmt in check mode
 format: ## Format all rust sources
 	cargo fmt --all
 
+.PHONY: sqlx-check
+sqlx-check: ## Ensure sqlx offline mode metadata is up to date
+	cargo sqlx prepare --check -- --lib
+
+.PHONY: sqlx-prepare
+sqlx-prepare: ## Generate sqlx offline mode metadata
+	cargo sqlx prepare -- --lib
+
 .PHONY: ci
-ci: clippy fmt test ## Run all checks as they would run in CI
+ci: sqlx-check clippy fmt test ## Run all checks as they would run in CI
 	@echo "NOTE: tarpaulin was not run since it will cause all targets to recompile."
 	@echo "To run it manually, call 'make tarpaulin'."

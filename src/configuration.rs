@@ -4,7 +4,7 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
-    pub port: u16,
+    pub application: ApplicationSettings,
 }
 
 #[derive(Deserialize)]
@@ -14,6 +14,12 @@ pub struct DatabaseSettings {
     pub name: String,
     pub username: String,
     pub password: Secret<String>,
+}
+
+#[derive(Deserialize)]
+pub struct ApplicationSettings {
+    pub port: u16,
+    pub host: String,
 }
 
 impl DatabaseSettings {
@@ -41,6 +47,17 @@ impl DatabaseSettings {
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     let mut settings = config::Config::default();
-    settings.merge(config::File::with_name("configuration"))?;
+    let base_path = std::env::current_dir().expect("Determine current directory");
+    let config_dir = base_path.join("configuration");
+
+    // Read the "default" configuration file
+    settings.merge(config::File::from(config_dir.join("base")).required(true))?;
+
+    // Detect runtime environment. Default to `local`.
+    let environment = std::env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "local".into());
+
+    // Load env-specific config
+    settings.merge(config::File::from(config_dir.join(environment)).required(true))?;
+
     settings.try_into()
 }
