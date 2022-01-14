@@ -3,7 +3,6 @@
 async fn main() -> std::io::Result<()> {
     use std::{net::TcpListener, time::Duration};
 
-    use secrecy::ExposeSecret;
     use sqlx::postgres::PgPoolOptions;
     use zero2prod::{
         configuration::get_configuration,
@@ -25,8 +24,7 @@ async fn main() -> std::io::Result<()> {
     // Connect to DB
     let postgres_pool = PgPoolOptions::new()
         .connect_timeout(Duration::from_secs(5))
-        .connect_lazy(cfg.database.connection_string().expose_secret())
-        .expect("Connect to PostgreSQL");
+        .connect_lazy_with(cfg.database.with_db());
 
     // Start up
     tracing::debug!("Listening on http://{}/", &addr);
