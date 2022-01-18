@@ -5,7 +5,7 @@ name: Rust
 on: push
 
 env:
-  CARGO_TERM_COLORS: always
+  CARGO_TERM_COLOR: always
   SKIP_DOCKER: "true"
   SQLX_FEATURES: postgres,native-tls
   SQLX_VERSION: 0.5.10
