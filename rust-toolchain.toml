@@ -1,4 +1,4 @@
 # note that changes here must be reflected in `.github/workflows/rust.yml`
 [toolchain]
-channel = "1.58.0"
+channel = "1.58.1"
 components = ["rustfmt", "clippy"]
