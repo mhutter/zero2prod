@@ -138,3 +138,34 @@ async fn subscribe_returns_400_when_data_is_missing() {
         );
     }
 }
+
+#[tokio::test]
+async fn subscribe_returns_400_when_data_is_present_but_invalid() {
+    let app = spawn_app().await;
+    let url = &format!("{}/subscriptions", app.address);
+    let client = reqwest::Client::new();
+    let test_cases = vec![
+        ("email=", "missing both name and email"),
+        ("name=", "missing both name and email"),
+        ("name=&email=", "missing both name and email"),
+        ("name=&email=hans.wurst%40example.com", "missing the name"),
+        ("name=hans%20wurst&email=", "missing the email"),
+    ];
+
+    for (body, error_message) in test_cases {
+        let response = client
+            .post(url)
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(body)
+            .send()
+            .await
+            .expect("send request");
+
+        assert_eq!(
+            400,
+            response.status().as_u16(),
+            "API did not fail with 400 when body was {}",
+            error_message,
+        );
+    }
+}
