@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use zero2prod::{
-    configuration::{get_configuration, DatabaseSettings},
+    configuration::{DatabaseSettings, Settings},
     telemetry::{get_subscriber, init_subscriber},
 };
 
@@ -52,7 +52,7 @@ async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
 
     // Configure DB
-    let mut cfg = get_configuration().expect("read configuration");
+    let mut cfg = Settings::new().expect("read configuration");
     cfg.database.name = Uuid::new_v4().to_string();
     let db = configure_database(&cfg.database).await;
 

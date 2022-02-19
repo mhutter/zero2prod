@@ -1,3 +1,4 @@
+use config::{Config, ConfigError, Environment, File};
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
@@ -51,22 +52,23 @@ impl DatabaseSettings {
     }
 }
 
-pub fn get_configuration() -> Result<Settings, config::ConfigError> {
-    let mut settings = config::Config::default();
-    let base_path = std::env::current_dir().expect("Determine current directory");
-    let config_dir = base_path.join("configuration");
+impl Settings {
+    pub fn new() -> Result<Self, ConfigError> {
+        let base_path = std::env::current_dir().expect("Determine current directory");
+        let config_dir = base_path.join("configuration");
 
-    // Read the "default" configuration file
-    settings.merge(config::File::from(config_dir.join("base")).required(true))?;
+        // Detect runtime environment. Default to `local`.
+        let environment = std::env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "local".into());
 
-    // Detect runtime environment. Default to `local`.
-    let environment = std::env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "local".into());
+        let s = Config::builder()
+            // Read the "default" configuration file
+            .add_source(File::from(config_dir.join("base")).required(true))
+            // Load env-specific config
+            .add_source(File::from(config_dir.join(environment)).required(true))
+            // Add settings from ENV vars
+            .add_source(Environment::with_prefix("app").separator("__"))
+            .build()?;
 
-    // Load env-specific config
-    settings.merge(config::File::from(config_dir.join(environment)).required(true))?;
-
-    // Add settings from ENV vars
-    settings.merge(config::Environment::with_prefix("app").separator("__"))?;
-
-    settings.try_into()
+        s.try_deserialize()
+    }
 }
