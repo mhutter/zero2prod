@@ -5,7 +5,7 @@ async fn main() -> std::io::Result<()> {
 
     use sqlx::postgres::PgPoolOptions;
     use zero2prod::{
-        configuration::get_configuration,
+        configuration::Settings,
         startup,
         telemetry::{get_subscriber, init_subscriber},
     };
@@ -15,7 +15,7 @@ async fn main() -> std::io::Result<()> {
     init_subscriber(subscriber);
 
     // Read configuration
-    let cfg = get_configuration().expect("read configuration");
+    let cfg = Settings::new().expect("read configuration");
     let addr = format!("{}:{}", cfg.application.host, cfg.application.port);
 
     // Bind listener to port
