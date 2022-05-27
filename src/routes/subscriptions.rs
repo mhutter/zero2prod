@@ -51,15 +51,17 @@ pub async fn insert_subscriber(
     db: &PgPool,
     new_subscriber: &NewSubscriber,
 ) -> Result<(), sqlx::Error> {
+    let id = Uuid::new_v4();
+    let now = Utc::now();
     query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
         VALUES ($1, $2, $3, $4)
         "#,
-        Uuid::new_v4(),
+        id,
         new_subscriber.email.as_ref(),
         new_subscriber.name.as_ref(),
-        Utc::now(),
+        now,
     )
     .execute(db)
     .await
