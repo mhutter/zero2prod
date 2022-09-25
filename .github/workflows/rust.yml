@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: "docker.io/library/postgres:14.1"
+        image: "docker.io/library/postgres:14.5"
         env:
           POSTGRES_DB: postgres
           POSTGRES_PASSWORD: password
@@ -109,7 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: "docker.io/library/postgres:14.1"
+        image: "docker.io/library/postgres:14.5"
         env:
           POSTGRES_DB: postgres
           POSTGRES_PASSWORD: password
